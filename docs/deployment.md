@@ -34,6 +34,8 @@ Generate production secrets separately from development secrets. The local `scri
 
 ## Browser authentication
 
+For the selected Vercel/Render deployment, the frontend now proxies `/api/...` and `/health` to `https://payme-backend-q4o5.onrender.com`. Set Render's `FRONTEND_URL=https://payme-frontend-xi.vercel.app` and Vercel's `VITE_API_URL=/`, then redeploy each changed project. Cookie paths remain unchanged because the proxy preserves API paths. This is the same-origin proxy option described below; requests still require the configured frontend Origin. No backend source change or database migration is required for the proxy.
+
 You can deploy and test `/health` before deploying the frontend. Production registration/login through the browser requires a matching HTTPS `FRONTEND_URL` and the current cookie policy's same-site deployment topology.
 
 Use frontend/API subdomains under one domain, for example `app.example.com` and `api.example.com`, or a same-origin API proxy. The current SameSite=Lax production cookies will not support a localhost frontend talking directly to an unrelated hosted API domain. Unrelated frontend/backend provider domains need an explicit cookie/CSRF design adjustment before authentication can work there. Keep production HTTPS and origin checks enabled.

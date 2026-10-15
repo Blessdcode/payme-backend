@@ -81,7 +81,7 @@ The frontend deduplicates refreshes, coordinates across tabs when browser Web Lo
 
 `pay_me_access` is httpOnly with path `/`. `pay_me_refresh` is httpOnly with path `/api/v1/auth`. Both are host-only, SameSite=Lax, and Secure in production. Clearing uses the same paths and security settings. No token is stored in localStorage or sessionStorage.
 
-For this cookie policy, deploy the frontend and API on the same site, such as `app.example.com` and `api.example.com`, with HTTPS. Independent provider domains that are cross-site need a deliberately revised cookie/CSRF deployment policy before launch; the current settings do not support them. During development use `localhost` consistently for both apps, rather than mixing it with `127.0.0.1`.
+For this cookie policy, expose browser API requests on the frontend origin through a proxy, or deploy frontend/API subdomains under one site with HTTPS. The selected Vercel frontend proxies API paths to Render; see [deployment](deployment.md). Set Render's `FRONTEND_URL=https://payme-frontend-xi.vercel.app` and Vercel's `VITE_API_URL=/`. Direct cross-site browser calls between the provider domains remain unsupported by SameSite=Lax cookies. During development use `localhost` consistently for both apps, rather than mixing it with `127.0.0.1`.
 
 Origin validation applies to all current mutation routes. The webhook namespace is exempt because providers do not send browser Origin headers; future webhook handlers must verify provider signatures. CORS is still restricted to `FRONTEND_URL` with credentials enabled.
 

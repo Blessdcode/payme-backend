@@ -1,5 +1,7 @@
 # Implementation documentation
 
+The hosting guide includes the selected Vercel-to-Render same-origin proxy and required production environment values.
+
 See [backend hosting](deployment.md) for production commands, environment variables, migrations, and browser cookie deployment requirements.
 
 Registration requires at least 8 characters; see the authentication guide for the complete password policy.
