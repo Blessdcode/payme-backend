@@ -1,0 +1,45 @@
+name: Backend CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: pay_me
+          POSTGRES_PASSWORD: ci_only_password
+          POSTGRES_DB: pay_me_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U pay_me -d pay_me_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://pay_me:ci_only_password@localhost:5432/pay_me_test?schema=public
+      FRONTEND_URL: http://localhost:5173
+      JWT_ACCESS_SECRET: ci-access-secret-used-only-for-automated-tests
+      JWT_REFRESH_SECRET: ci-refresh-secret-used-only-for-automated-tests
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      # pnpm defaults to frozen installs in CI once the lockfile exists.
+      - run: pnpm install
+      - run: pnpm db:validate
+      - run: pnpm db:deploy
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
+      - run: pnpm test:database

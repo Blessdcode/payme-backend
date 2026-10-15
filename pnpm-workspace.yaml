@@ -1,0 +1,5 @@
+# pnpm build-script policy for this standalone repository; no workspace packages.
+allowBuilds:
+  '@nestjs/core': true
+  '@prisma/engines': true
+  prisma: true

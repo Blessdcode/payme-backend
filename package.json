@@ -1,0 +1,59 @@
+{
+  "name": "pay-me-backend",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@11.20.0",
+  "engines": {
+    "node": ">=24.0.0 <25"
+  },
+  "scripts": {
+    "dev": "tsc-watch --project tsconfig.json --onSuccess \"node --enable-source-maps dist/main.js\"",
+    "build": "pnpm db:generate && tsc -p tsconfig.json",
+    "start": "node --enable-source-maps dist/main.js",
+    "typecheck": "pnpm db:generate && tsc -p tsconfig.json --noEmit",
+    "lint": "eslint . --max-warnings=0",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "pnpm build && node --test test/*.test.cjs",
+    "test:database": "node --test test/database.integration.cjs",
+    "db:generate": "prisma generate",
+    "db:validate": "prisma validate",
+    "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy"
+  },
+  "dependencies": {
+    "@nestjs/common": "^11.1.0",
+    "@nestjs/config": "^4.0.0",
+    "@nestjs/core": "^11.1.0",
+    "@nestjs/jwt": "^11.0.0",
+    "@nestjs/platform-express": "^11.1.0",
+    "@nestjs/throttler": "^6.5.0",
+    "@prisma/adapter-pg": "^7.0.0",
+    "@prisma/client": "^7.0.0",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.14.2",
+    "bcryptjs": "^3.0.2",
+    "cookie-parser": "^1.4.7",
+    "dotenv": "^17.2.0",
+    "helmet": "^8.1.0",
+    "pg": "^8.16.0",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2",
+    "zod": "^4.1.0"
+  },
+  "devDependencies": {
+    "@nestjs/testing": "^11.1.0",
+    "@eslint/js": "^9.39.0",
+    "eslint": "^9.39.0",
+    "globals": "^16.5.0",
+    "prettier": "^3.6.2",
+    "typescript-eslint": "^8.46.0",
+    "@types/express": "^5.0.0",
+    "@types/cookie-parser": "^1.4.9",
+    "@types/node": "^24.0.0",
+    "@types/pg": "^8.15.0",
+    "prisma": "^7.0.0",
+    "tsc-watch": "^7.2.0",
+    "typescript": "~5.9.3"
+  }
+}
