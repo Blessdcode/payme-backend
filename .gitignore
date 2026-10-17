@@ -8,3 +8,7 @@ coverage/
 src/generated/
 .pnpm-store/
 *.log
+/.windsurf
+/.claude
+/.agents
+/.pnpm-store
