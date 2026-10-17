@@ -201,12 +201,14 @@ test('disabled delivery never claims to send; provider failures release reservat
     error => error.getStatus() === 503,
   );
   await f.service.send(f.users.get('user-1'));
+  await new Promise(resolve => setImmediate(resolve));
   assert.equal(f.records.size, 0);
   f.email.enabled = true;
   f.email.sendVerification = async () => {
     throw new Error('Synthetic provider failure');
   };
   await f.service.request('test@example.com');
+  await new Promise(resolve => setImmediate(resolve));
   assert.equal(f.records.size, 0);
   assert.equal(f.users.get('user-1').emailVerificationSentAt, null);
 });

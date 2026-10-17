@@ -111,3 +111,5 @@ Build with `pnpm build`, apply committed migrations with `pnpm db:deploy`, and s
 Authentication includes register, login, refresh, logout, and current-user endpoints, backed by revocable sessions. See the [authentication guide](docs/authentication.md) for setup and examples. Customer, business, invoice, checkout, and webhook endpoints are later phases. No development accounts are seeded automatically.
 
 Password recovery is now implemented on the backend. See [forgot/reset password](docs/password-reset.md) for the API, migration, Postman workflow and verification limits. Authenticated password changes invalidate pending reset links.
+
+See [verification enforcement and mail response handling](docs/authentication-access.md) for the current signup/sign-in rules and slow-SMTP regression fixes.

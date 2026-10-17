@@ -1,6 +1,8 @@
 import {
   ConflictException,
+  ForbiddenException,
   Injectable,
+  Logger,
   UnauthorizedException,
 } from '@nestjs/common';
 import { randomUUID, timingSafeEqual } from 'node:crypto';
@@ -15,6 +17,7 @@ import { EmailVerificationService } from './email-verification.service';
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
   constructor(
     private readonly prisma: PrismaService,
     private readonly passwords: PasswordService,
@@ -22,18 +25,11 @@ export class AuthService {
     private readonly emailVerification: EmailVerificationService,
   ) {}
 
-  async register(
-    dto: RegisterDto,
-  ): Promise<{ user: AuthUser; tokens: AuthTokens }> {
+  async register(dto: RegisterDto): Promise<{ user: AuthUser }> {
     const userId = randomUUID();
-    const sessionId = randomUUID();
-    const expiresAt = this.sessionExpiry();
-    const [passwordHash, tokens] = await Promise.all([
-      this.passwords.hash(dto.password),
-      this.tokens.issue(userId, sessionId, expiresAt),
-    ]);
+    const passwordHash = await this.passwords.hash(dto.password);
     try {
-      // Nested creation makes the user and initial session atomic.
+      // Verification is required before creating any authenticated session.
       const user = await this.prisma.user.create({
         data: {
           id: userId,
@@ -41,18 +37,17 @@ export class AuthService {
           firstName: dto.firstName,
           lastName: dto.lastName,
           passwordHash,
-          sessions: {
-            create: {
-              id: sessionId,
-              refreshTokenHash: this.tokens.hash(tokens.refreshToken),
-              expiresAt,
-            },
-          },
         },
         select: publicUserSelect,
       });
-      await this.emailVerification.send(user);
-      return { user, tokens };
+      // Account creation is complete. SMTP must not delay the response
+      // and make a successful registration appear to have failed in the browser.
+      void this.emailVerification.send(user).catch(() => {
+        this.logger.warn(
+          'Registration verification email failed; use the resend endpoint',
+        );
+      });
+      return { user };
     } catch (error) {
       if (
         typeof error === 'object' &&
@@ -79,6 +74,10 @@ export class AuthService {
     );
     if (!record || !matches)
       throw new UnauthorizedException('Invalid email or password');
+    if (!record.emailVerifiedAt)
+      throw new ForbiddenException(
+        'Verify your email address before signing in',
+      );
     const sessionId = randomUUID();
     const expiresAt = this.sessionExpiry();
     const tokens = await this.tokens.issue(record.id, sessionId, expiresAt);

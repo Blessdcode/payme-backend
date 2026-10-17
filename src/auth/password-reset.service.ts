@@ -64,21 +64,11 @@ export class PasswordResetService {
         return true;
       });
       if (!reserved) return ACCEPTED;
-      try {
-        await this.email.sendPasswordReset(user.email, token, randomUUID());
-      } catch {
-        await this.prisma.$transaction(async tx => {
-          // Keep the same user-before-token lock order as reset and password change.
-          await tx.user.updateMany({
-            where: { id: user.id, passwordResetSentAt: now },
-            data: { passwordResetSentAt: null },
-          });
-          await tx.passwordResetToken.deleteMany({
-            where: { userId: user.id, tokenHash },
-          });
-        });
-        throw new Error('Reset email not delivered');
-      }
+      void this.deliver(user, token, tokenHash, now).catch(() => {
+        this.logger.warn(
+          'Email delivery failed; retry through the request endpoint',
+        );
+      });
     } catch {
       this.logger.warn(
         'Password reset email could not be sent; retry the request later',
@@ -124,6 +114,29 @@ export class PasswordResetService {
     return {
       data: { message: 'Password reset. Sign in again on all devices.' },
     };
+  }
+
+  private async deliver(
+    user: { id: string; email: string },
+    token: string,
+    tokenHash: string,
+    now: Date,
+  ): Promise<void> {
+    try {
+      await this.email.sendPasswordReset(user.email, token, randomUUID());
+    } catch {
+      await this.prisma.$transaction(async tx => {
+        // Keep the same user-before-token lock order as reset and password change.
+        await tx.user.updateMany({
+          where: { id: user.id, passwordResetSentAt: now },
+          data: { passwordResetSentAt: null },
+        });
+        await tx.passwordResetToken.deleteMany({
+          where: { userId: user.id, tokenHash },
+        });
+      });
+      throw new Error('Reset email not delivered');
+    }
   }
 
   private hash(token: string): string {

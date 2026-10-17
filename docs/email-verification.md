@@ -30,7 +30,7 @@ Successful confirmation returns:
 { "data": { "message": "Email address verified" } }
 ```
 
-Registration requests a verification email automatically when configured. Email delivery failures do not roll back account creation or break sign-in; the user can use the resend endpoint. Existing accounts are not retroactively marked verified. Registration, login, refresh and `/me` add the nullable `emailVerifiedAt` field without removing previous fields. Unverified users can still sign in to check status and request another link.
+Registration requests a verification email automatically when configured. Email delivery failures do not roll back account creation or break sign-in; the user can use the resend endpoint. Existing accounts are not retroactively marked verified. Registration, login, refresh and `/me` add the nullable `emailVerifiedAt` field without removing previous fields. Unverified users cannot sign in; correct credentials return 403. Resend and confirmation are public. Registration creates no session.
 
 ## Tokens, transactions, and limits
 
@@ -42,7 +42,7 @@ If delivery fails, conditional cleanup removes only that attempted token and rel
 
 HTTP rate limits are 5 resend requests per hour per IP and 10 confirmation attempts per minute per IP. The existing auth throttler remains process-local. Accurate client IP handling behind Render/Vercel and shared throttling for multiple instances remain deployment considerations; the per-account cooldown is database-backed regardless.
 
-`VerifiedEmailGuard` is exported from `AuthModule` for future protected business/payment controllers. Use it after `AuthGuard`; it returns 403 for unverified users. No existing login/dashboard route is newly blocked, because the verification UI is deliberately not implemented yet. Future business/financial mutations must explicitly opt into this guard.
+`AuthGuard` requires a verified email by default, returning 403 for unverified existing sessions. Only `/me` explicitly opts out with `AllowUnverifiedEmail` to support verification status for old sessions. Business controllers must use `AuthGuard`; no extra verification opt-in is needed. The frontend blocks dashboard access until verification. `VerifiedEmailGuard` remains available as an additional explicit check.
 
 ## Email provider configuration
 

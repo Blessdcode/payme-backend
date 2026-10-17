@@ -2,7 +2,7 @@
 
 See [change password](change-password.md) for the authenticated API, session revocation, concurrency rules, Postman cases, and verification results.
 
-SMTP configuration has been validated locally; backend compilation and all 34 non-database tests passed, including password change and authentication regressions. Real mailbox delivery and the new password-change Postman requests remain to be checked manually. Render is no longer the confirmed hosting target; see the hosting guide's current-status note.
+SMTP configuration has been validated locally; backend compilation and all 37 non-database tests passed, including password change and authentication regressions. Real mailbox delivery and the new password-change Postman requests remain to be checked manually. Render is no longer the confirmed hosting target; see the hosting guide's current-status note.
 
 Email delivery uses Nodemailer with SMTP. The email verification guide documents credentials, TLS modes, tests, and Render's SMTP restrictions.
 
@@ -26,3 +26,5 @@ Registration requires at least 8 characters; see the authentication guide for th
 For every substantial feature, maintain setup/migrations, API requests and responses, validation/authorization rules, important implementation decisions, verification commands, and known limits. Keep instructions consistent with current code. Describe provider-specific behavior only when official documentation confirms it.
 
 Password recovery is now implemented on the backend. See [forgot/reset password](password-reset.md) for the API, migration, Postman workflow and verification limits. Authenticated password changes invalidate pending reset links.
+
+See [verification enforcement and mail response handling](authentication-access.md) for the current signup/sign-in rules and slow-SMTP regression fixes.

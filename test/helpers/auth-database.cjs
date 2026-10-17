@@ -2,6 +2,7 @@ function fakeDatabase() {
   const users = new Map();
   const sessions = new Map();
   const resetTokens = new Map();
+  const verificationTokens = new Map();
   let pending = Promise.resolve();
   function safeUser(user) {
     return {
@@ -28,6 +29,7 @@ function fakeDatabase() {
     users,
     sessions,
     resetTokens,
+    verificationTokens,
     user: {
       create: async ({ data }) => {
         if ([...users.values()].some(user => user.email === data.email)) {
@@ -35,12 +37,14 @@ function fakeDatabase() {
         }
         const user = { ...data, createdAt: new Date() };
         users.set(user.id, user);
-        const session = {
-          ...data.sessions.create,
-          userId: user.id,
-          revokedAt: null,
-        };
-        sessions.set(session.id, session);
+        if (data.sessions?.create) {
+          const session = {
+            ...data.sessions.create,
+            userId: user.id,
+            revokedAt: null,
+          };
+          sessions.set(session.id, session);
+        }
         return safeUser(user);
       },
       findUnique: async ({ where }) => {
@@ -54,15 +58,20 @@ function fakeDatabase() {
         for (const user of users.values()) {
           if (
             user.id === where.id &&
-            (where.passwordResetSentAt === undefined ||
-              user.passwordResetSentAt?.getTime() ===
-                where.passwordResetSentAt?.getTime()) &&
+            (where.emailVerifiedAt === undefined ||
+              (user.emailVerifiedAt ?? null) === where.emailVerifiedAt) &&
+            ['passwordResetSentAt', 'emailVerificationSentAt'].every(
+              field =>
+                where[field] === undefined ||
+                user[field]?.getTime() === where[field]?.getTime(),
+            ) &&
             (!where.OR ||
               where.OR.some(condition =>
-                condition.passwordResetSentAt === null
-                  ? user.passwordResetSentAt == null
-                  : user.passwordResetSentAt <=
-                    condition.passwordResetSentAt.lte,
+                Object.entries(condition).every(([field, value]) =>
+                  value === null
+                    ? user[field] == null
+                    : user[field] <= value.lte,
+                ),
               )) &&
             (where.passwordHash === undefined ||
               user.passwordHash === where.passwordHash)
@@ -103,6 +112,37 @@ function fakeDatabase() {
         return { count };
       },
     },
+    emailVerificationToken: {
+      upsert: async ({ where, create, update }) => {
+        const row = verificationTokens.has(where.userId)
+          ? { ...verificationTokens.get(where.userId), ...update }
+          : { ...create };
+        verificationTokens.set(where.userId, row);
+        return row;
+      },
+      findUnique: async ({ where }) => {
+        const row = [...verificationTokens.values()].find(row =>
+          where.userId
+            ? row.userId === where.userId
+            : row.tokenHash === where.tokenHash,
+        );
+        return row ? { ...row, user: { ...users.get(row.userId) } } : null;
+      },
+      deleteMany: async ({ where }) => {
+        let count = 0;
+        for (const [id, row] of verificationTokens) {
+          if (
+            row.userId === where.userId &&
+            (!where.tokenHash || row.tokenHash === where.tokenHash) &&
+            (!where.expiresAt || row.expiresAt > where.expiresAt.gt)
+          ) {
+            verificationTokens.delete(id);
+            count++;
+          }
+        }
+        return { count };
+      },
+    },
     session: {
       create: async ({ data }) => {
         const session = { ...data, revokedAt: null };
@@ -134,12 +174,17 @@ function fakeDatabase() {
     },
     $transaction: work => {
       const result = pending.then(async () => {
+        const beforeVerification = structuredClone([...verificationTokens]);
         const beforeTokens = structuredClone([...resetTokens]);
         const beforeUsers = structuredClone([...users]);
         const beforeSessions = structuredClone([...sessions]);
         try {
           return await work(database);
         } catch (error) {
+          verificationTokens.clear();
+          beforeVerification.forEach(([key, value]) =>
+            verificationTokens.set(key, value),
+          );
           resetTokens.clear();
           beforeTokens.forEach(([key, value]) => resetTokens.set(key, value));
           users.clear();

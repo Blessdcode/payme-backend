@@ -108,6 +108,7 @@ test('mail failure releases cooldown and token; disabled mail returns 503', asyn
     throw Error('Synthetic failure');
   };
   await f.service.request('test@example.com');
+  await new Promise(resolve => setImmediate(resolve));
   assert.equal(f.db.resetTokens.size, 0);
   assert.equal(f.db.users.get('u').passwordResetSentAt, null);
   f.email.enabled = false;
@@ -163,7 +164,14 @@ test('HTTP recovery enforces origin and validation, clears cookies and rejects o
   };
   const registered = await post('register', account);
   assert.equal(registered.status, 201);
-  const cookie = registered.headers
+  const accountUser = [...db.users.values()][0];
+  accountUser.emailVerifiedAt = new Date();
+  const signedIn = await post('login', {
+    email: account.email,
+    password: account.password,
+  });
+  assert.equal(signedIn.status, 200);
+  const cookie = signedIn.headers
     .getSetCookie()
     .map(c => c.split(';')[0])
     .join('; ');

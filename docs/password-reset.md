@@ -28,7 +28,7 @@ Requests are limited to 5 per hour per IP; resets to 10 per minute per IP. Reque
 
 ## Implementation choices
 
-Recovery links contain 32 random bytes encoded as hexadecimal. Only the SHA-256 hash is stored. Tokens expire after 30 minutes; a newer request replaces the previous link. Email delivery failure removes that attempt's token and releases its cooldown without logging credentials or tokens. Delivery is synchronous and has no background retry queue.
+Recovery links contain 32 random bytes encoded as hexadecimal. Only the SHA-256 hash is stored. Tokens expire after 30 minutes; a newer request replaces the previous link. Email delivery failure removes that attempt's token and releases its cooldown without logging credentials or tokens. After token reservation, SMTP delivery runs asynchronously in this NestJS process; it has no durable queue or automatic retry. Requests return without waiting for SMTP. Process termination may lose delivery; request another link after cooldown.
 
 Password replacement, single-use token consumption and session revocation run in one transaction. Conditional updates against the previous password hash prevent concurrent changes from overwriting winning credentials. User rows are locked before token/session changes. Authenticated password changes delete pending recovery tokens; login also checks that credentials have not changed before creating its session. Email-verification tokens cannot reset passwords.
 
@@ -44,4 +44,6 @@ pnpm lint
 pnpm test
 ```
 
-Compilation, ESLint and all 34 non-database tests passed locally. Automated tests use an in-memory database substitute and stub SMTP. They cover cooldown, hashed storage, replacement, expiry, replay, concurrent resets, transactional rollback, password-change invalidation, email failure, HTTP validation/origin/cookies, stale sessions and old/new login. Real Supabase migration, database isolation, mailbox delivery, manual Postman and deployment verification remain pending. The current backend host must be confirmed before provider-specific deployment configuration. After deployment verification, implement the frontend recovery forms in its separate repository.
+Compilation, ESLint and all 37 non-database tests passed locally. Automated tests use an in-memory database substitute and stub SMTP. They cover cooldown, hashed storage, replacement, expiry, replay, concurrent resets, transactional rollback, password-change invalidation, email failure, HTTP validation/origin/cookies, stale sessions and old/new login. Real Supabase migration, database isolation, mailbox delivery, manual Postman and deployment verification remain pending. The current backend host must be confirmed before provider-specific deployment configuration. After deployment verification, implement the frontend recovery forms in its separate repository.
+
+Recovery is available while signed out, including for unverified accounts. Reset preserves `emailVerifiedAt`; it never bypasses the verified-email requirement for sign-in. See [current auth access rules](authentication-access.md).

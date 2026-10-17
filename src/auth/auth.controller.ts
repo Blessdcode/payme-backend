@@ -14,7 +14,7 @@ import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import type { Environment } from '../config/env.validation';
 import { ACCESS_COOKIE, REFRESH_COOKIE } from './auth.constants';
-import { AuthGuard } from './auth.guard';
+import { AllowUnverifiedEmail, AuthGuard } from './auth.guard';
 import { AuthService } from './auth.service';
 import type { AuthenticatedRequest } from './auth.types';
 import { clearAuthCookies, readCookie, setAuthCookies } from './cookies';
@@ -48,7 +48,7 @@ export class AuthController {
     @Res({ passthrough: true }) response: Response,
   ) {
     const result = await this.auth.register(dto);
-    setAuthCookies(response, result.tokens, this.secureCookies());
+    clearAuthCookies(response, this.secureCookies());
     return { data: result.user };
   }
 
@@ -100,6 +100,7 @@ export class AuthController {
   }
 
   @Get('me')
+  @AllowUnverifiedEmail()
   @UseGuards(AuthGuard)
   me(@Req() request: AuthenticatedRequest) {
     return { data: request.user };

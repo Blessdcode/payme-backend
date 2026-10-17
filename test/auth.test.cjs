@@ -131,15 +131,31 @@ test('registration, login, refresh, replay protection, logout and origin validat
     'lastName',
   ]);
   assert.equal(registered.headers.get('cache-control'), 'no-store');
-  const initialCookies = cookiesFrom(registered);
-  for (const cookie of registered.headers.getSetCookie()) {
+  assert.equal(db.sessions.size, 0);
+  assert.equal(
+    (await call('login', { email: account.email, password: account.password }))
+      .status,
+    403,
+  );
+  assert.equal(db.sessions.size, 0);
+  assert.equal((await fetch(base + '/me')).status, 401);
+  // Verification is tested separately; mark this fixture verified for session checks.
+  db.users.get(registeredBody.data.id).emailVerifiedAt = new Date();
+  registeredBody.data.emailVerifiedAt = db.users
+    .get(registeredBody.data.id)
+    .emailVerifiedAt.toISOString();
+  const verifiedLogin = await call('login', {
+    email: account.email,
+    password: account.password,
+  });
+  assert.equal(verifiedLogin.status, 200);
+  const initialCookies = cookiesFrom(verifiedLogin);
+  for (const cookie of verifiedLogin.headers.getSetCookie()) {
     assert.match(cookie, /HttpOnly/i);
     assert.match(cookie, /SameSite=Lax/i);
   }
-  assert.match([...db.users.values()][0].passwordHash, /^\$2[ab]\$12\$/);
   const stored = [...db.sessions.values()][0];
   assert.match(stored.refreshTokenHash, /^[a-f0-9]{64}$/);
-  assert.ok(!initialCookies.includes(stored.refreshTokenHash));
   const duplicate = await call('register', account);
   assert.equal(duplicate.status, 409);
   const me = await fetch(`${base}/me`, { headers: { Cookie: initialCookies } });

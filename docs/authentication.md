@@ -37,13 +37,13 @@ pnpm dev
 
 All paths start with `/api/v1/auth`. All responses set `Cache-Control: no-store`. POST requests must include an `Origin` header exactly matching `FRONTEND_URL`, including its port in development. The browser supplies this automatically. Cookies are sent with credentials; tokens never appear in JSON responses.
 
-| Method | Path        | Body                                         | Result                                               |
-| ------ | ----------- | -------------------------------------------- | ---------------------------------------------------- |
-| POST   | `/register` | `email`, `password`, `firstName`, `lastName` | 201, public user and auth cookies                    |
-| POST   | `/login`    | `email`, `password`                          | 200, public user and auth cookies                    |
-| POST   | `/refresh`  | None                                         | 200, public user and rotated auth cookies            |
-| POST   | `/logout`   | None                                         | 204, current session revoked and cookies cleared     |
-| GET    | `/me`       | None                                         | 200, public user; 401 without a valid active session |
+| Method | Path        | Body                                         | Result                                                     |
+| ------ | ----------- | -------------------------------------------- | ---------------------------------------------------------- |
+| POST   | `/register` | `email`, `password`, `firstName`, `lastName` | 201, unverified public user; no authenticated session      |
+| POST   | `/login`    | `email`, `password`                          | 200, public user and auth cookies (verified accounts only) |
+| POST   | `/refresh`  | None                                         | 200, public user and rotated auth cookies                  |
+| POST   | `/logout`   | None                                         | 204, current session revoked and cookies cleared           |
+| GET    | `/me`       | None                                         | 200, public user; 401 without a valid active session       |
 
 User response:
 
@@ -59,7 +59,7 @@ User response:
 }
 ```
 
-Emails are trimmed and lowercased. Registration passwords require at least 8 characters and at most 72 UTF-8 bytes, reflecting bcrypt's input limit. Passwords are never trimmed. Names are trimmed and require 1–80 characters. Unexpected body fields are rejected. Login returns the same 401 message for unknown emails and incorrect passwords. Duplicate registration returns 409. Invalid bodies return 400, disallowed/missing origins return 403, and exhausted rate limits return 429.
+Emails are trimmed and lowercased. Registration passwords require at least 8 characters and at most 72 UTF-8 bytes, reflecting bcrypt's input limit. Passwords are never trimmed. Names are trimmed and require 1–80 characters. Unexpected body fields are rejected. Login returns the same 401 message for unknown emails and incorrect passwords. Correct credentials for an unverified account return 403 without creating a session. Duplicate registration returns 409. Invalid bodies return 400, disallowed/missing origins return 403, and exhausted rate limits return 429.
 
 ## How the code fits together
 
@@ -134,3 +134,5 @@ Password policy update: the minimum is 8 characters. Backend compilation and reg
 During implementation, Prisma schema validation passed and a generated schema diff matched the checked-in Session migration. Backend lint passed. Seven configuration/DTO validation tests passed. Full JWT/cookie HTTP tests and the complete build could not run because this session cannot install the newly added packages into the existing dependency store. Direct outbound database connections are also blocked here, so the Session migration has not been applied to Supabase by this session. Complete installation, `db:deploy`, and the checks above before treating authentication as verified end to end.
 
 Password recovery is now implemented on the backend. See [forgot/reset password](password-reset.md) for the API, migration, Postman workflow and verification limits. Authenticated password changes invalidate pending reset links.
+
+See [verification enforcement and mail response handling](authentication-access.md) for the current signup/sign-in rules and slow-SMTP regression fixes.

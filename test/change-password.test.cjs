@@ -14,6 +14,7 @@ function fixture() {
   const db = fakeDatabase();
   db.users.set('user-1', {
     id: 'user-1',
+    emailVerifiedAt: new Date(),
     email: 'test@example.com',
     passwordHash: 'old-test-password',
   });

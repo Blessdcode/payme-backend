@@ -72,22 +72,13 @@ export class EmailVerificationService {
         return true;
       });
       if (!reserved) return;
-      try {
-        await this.email.sendVerification(user.email, token, randomUUID());
-      } catch {
-        await this.prisma.$transaction(async tx => {
-          await tx.emailVerificationToken.deleteMany({
-            where: { userId: user.id, tokenHash },
-          });
-          await tx.user.updateMany({
-            where: { id: user.id, emailVerificationSentAt: now },
-            data: { emailVerificationSentAt: null },
-          });
-        });
-        throw new Error('Email not delivered');
-      }
+      void this.deliver(user, token, tokenHash, now).catch(() => {
+        this.logger.warn(
+          'Email delivery failed; retry through the request endpoint',
+        );
+      });
     } catch {
-      // Account creation/sign-in remain usable. Resend has the same public
+      // Registration remains successful. Resend has the same public
       // response for unknown, verified, rate-limited, and delivery-failed users.
       this.logger.warn(
         'Verification email could not be sent; retry through the resend endpoint',
@@ -118,6 +109,28 @@ export class EmailVerificationService {
       if (consumed.count !== 1) throw this.invalidToken();
     });
     return { data: { message: 'Email address verified' } };
+  }
+
+  private async deliver(
+    user: { id: string; email: string },
+    token: string,
+    tokenHash: string,
+    now: Date,
+  ): Promise<void> {
+    try {
+      await this.email.sendVerification(user.email, token, randomUUID());
+    } catch {
+      await this.prisma.$transaction(async tx => {
+        await tx.user.updateMany({
+          where: { id: user.id, emailVerificationSentAt: now },
+          data: { emailVerificationSentAt: null },
+        });
+        await tx.emailVerificationToken.deleteMany({
+          where: { userId: user.id, tokenHash },
+        });
+      });
+      throw new Error('Email not delivered');
+    }
   }
 
   private hash(token: string): string {
