@@ -1,5 +1,9 @@
 # Authentication implementation
 
+Authenticated password change is implemented separately; see [change password](change-password.md) for the API and sign-out-everywhere behavior. Forgotten-password recovery is documented in [password recovery](password-reset.md). Account deletion and MFA remain separate work.
+
+Email verification is implemented as a separate backend phase; see [email verification](email-verification.md) for nullable verification status, resend/confirm endpoints, email configuration, migration, and Postman checks. Password recovery is implemented separately; MFA and account deletion remain future authentication work.
+
 This phase adds email/password authentication to the existing NestJS API. Supabase remains the PostgreSQL host; these endpoints do not use Supabase Auth. The frontend and backend are independent repositories.
 
 ## Setup
@@ -121,10 +125,12 @@ Login sends just `email` and `password`. Refresh/logout use the cookie jar and n
 
 Never paste real passwords, cookies, JWT secrets, or database connection strings into issue reports. Include the request ID and sanitized status/error instead.
 
-Email verification, password reset, account deletion, and multi-factor authentication are later features. They are not exposed by this phase.
+Email verification and authenticated password change are covered by the separate backend extensions linked above. Password recovery is covered in its own guide; account deletion and multi-factor authentication remain later features.
 
 ## Current verification record
 
 Password policy update: the minimum is 8 characters. Backend compilation and registration validation checks passed, including acceptance at 8 characters and rejection at 7. This validation-only change requires no database migration.
 
 During implementation, Prisma schema validation passed and a generated schema diff matched the checked-in Session migration. Backend lint passed. Seven configuration/DTO validation tests passed. Full JWT/cookie HTTP tests and the complete build could not run because this session cannot install the newly added packages into the existing dependency store. Direct outbound database connections are also blocked here, so the Session migration has not been applied to Supabase by this session. Complete installation, `db:deploy`, and the checks above before treating authentication as verified end to end.
+
+Password recovery is now implemented on the backend. See [forgot/reset password](password-reset.md) for the API, migration, Postman workflow and verification limits. Authenticated password changes invalidate pending reset links.

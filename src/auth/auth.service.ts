@@ -11,6 +11,7 @@ import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { PasswordService } from './password.service';
 import { TokenService } from './token.service';
+import { EmailVerificationService } from './email-verification.service';
 
 @Injectable()
 export class AuthService {
@@ -18,6 +19,7 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly passwords: PasswordService,
     private readonly tokens: TokenService,
+    private readonly emailVerification: EmailVerificationService,
   ) {}
 
   async register(
@@ -49,6 +51,7 @@ export class AuthService {
         },
         select: publicUserSelect,
       });
+      await this.emailVerification.send(user);
       return { user, tokens };
     } catch (error) {
       if (
@@ -79,13 +82,24 @@ export class AuthService {
     const sessionId = randomUUID();
     const expiresAt = this.sessionExpiry();
     const tokens = await this.tokens.issue(record.id, sessionId, expiresAt);
-    await this.prisma.session.create({
-      data: {
-        id: sessionId,
-        userId: record.id,
-        refreshTokenHash: this.tokens.hash(tokens.refreshToken),
-        expiresAt,
-      },
+    await this.prisma.$transaction(async tx => {
+      // The conditional write locks the same user row used by password changes.
+      // A login verified against an old hash cannot create a live session after
+      // a password change commits its session revocations.
+      const current = await tx.user.updateMany({
+        where: { id: record.id, passwordHash: record.passwordHash },
+        data: { passwordHash: record.passwordHash },
+      });
+      if (current.count !== 1)
+        throw new UnauthorizedException('Invalid email or password');
+      await tx.session.create({
+        data: {
+          id: sessionId,
+          userId: record.id,
+          refreshTokenHash: this.tokens.hash(tokens.refreshToken),
+          expiresAt,
+        },
+      });
     });
     const user: AuthUser = {
       id: record.id,
@@ -93,6 +107,7 @@ export class AuthService {
       firstName: record.firstName,
       lastName: record.lastName,
       createdAt: record.createdAt,
+      emailVerifiedAt: record.emailVerifiedAt,
     };
     return { user, tokens };
   }

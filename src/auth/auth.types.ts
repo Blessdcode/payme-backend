@@ -7,6 +7,7 @@ export const publicUserSelect = {
   firstName: true,
   lastName: true,
   createdAt: true,
+  emailVerifiedAt: true,
 } satisfies Prisma.UserSelect;
 
 export type AuthUser = Prisma.UserGetPayload<{

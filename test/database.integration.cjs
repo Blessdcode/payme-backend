@@ -36,6 +36,52 @@ test('PostgreSQL health and tenant foreign keys work against the migrated schema
         const first = await tx.business.create({
           data: { ownerId: user.id, name: 'First', slug: `first-${unique}` },
         });
+        const verification = await tx.emailVerificationToken.create({
+          data: {
+            userId: user.id,
+            tokenHash: 'd'.repeat(64),
+            expiresAt: new Date(Date.now() + 60000),
+          },
+        });
+        assert.equal(verification.userId, user.id);
+        const reserved = await tx.user.updateMany({
+          where: {
+            id: user.id,
+            emailVerifiedAt: null,
+            emailVerificationSentAt: null,
+          },
+          data: { emailVerificationSentAt: new Date() },
+        });
+        assert.equal(reserved.count, 1);
+        const duplicateSend = await tx.user.updateMany({
+          where: {
+            id: user.id,
+            emailVerifiedAt: null,
+            emailVerificationSentAt: null,
+          },
+          data: { emailVerificationSentAt: new Date() },
+        });
+        assert.equal(duplicateSend.count, 0);
+        await tx.user.update({
+          where: { id: user.id },
+          data: { emailVerifiedAt: new Date() },
+        });
+        const consumed = await tx.emailVerificationToken.deleteMany({
+          where: {
+            userId: user.id,
+            tokenHash: 'd'.repeat(64),
+            expiresAt: { gt: new Date() },
+          },
+        });
+        assert.equal(consumed.count, 1);
+        assert.equal(
+          (
+            await tx.emailVerificationToken.deleteMany({
+              where: { userId: user.id },
+            })
+          ).count,
+          0,
+        );
         const second = await tx.business.create({
           data: { ownerId: user.id, name: 'Second', slug: `second-${unique}` },
         });

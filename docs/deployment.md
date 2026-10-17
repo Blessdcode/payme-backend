@@ -1,5 +1,7 @@
 # Backend hosting
 
+Current hosting status: the project owner stated that Render is no longer in use. Treat the Render-specific instructions and URLs below as historical configuration, not the current deployment target. Confirm the new host and its frontend origin before configuring deployment or proxy routing. General build/start, environment, migration, and health-check instructions still apply.
+
 The backend is an independent Git repository. The project owner handles GitHub repository creation and pushing. Hosting connects to that backend repository; do not set a `backend/` root directory when its `package.json` is already at the repository root. Supabase remains the PostgreSQL host.
 
 ## Runtime and commands
@@ -18,6 +20,10 @@ Set the build environment to allow development dependencies, even though the run
 Run migrations once per release, before switching traffic to the new application. Use the host's pre-deploy/release step if available. Otherwise run `pnpm db:deploy` from a trusted environment against the target database before deploying that release. Do not run `migrate dev`, reset the database, or generate migrations against production. Keep schema changes compatible with the previous running version during rollouts.
 
 ## Environment variables
+
+For Nodemailer, configure `EMAIL_PROVIDER=smtp`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASSWORD`, and `EMAIL_FROM` privately on Render. See the email verification guide for TLS settings. Render Free blocks outbound SMTP ports 25, 465, and 587; resolve plan/provider connectivity before enabling delivery. No SMTP credentials belong in Vercel.
+
+Email verification adds an opt-in delivery configuration. Leave `EMAIL_PROVIDER=disabled` until provider setup and the verification UI are ready; see [email verification](email-verification.md). Deploy its committed database migration before the new API version. Do not add mail-provider keys to Vercel.
 
 Set these in the hosting dashboard's secret/environment settings. Do not commit a real `.env` or paste secrets into build commands.
 

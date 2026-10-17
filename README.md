@@ -1,5 +1,11 @@
 # Pay Me backend
 
+Authenticated password changes are documented in the [change-password guide](docs/change-password.md), with requests in the backend Postman collection. This backend-only phase revokes all account sessions and requires signing in again after a change.
+
+Email delivery uses Nodemailer over SMTP. Run `pnpm install` after pulling the adapter change and follow the [SMTP configuration](docs/email-verification.md#email-provider-configuration). No extra database migration is needed for the provider replacement.
+
+Email verification: see the [backend implementation guide](docs/email-verification.md) and [Postman collection](postman/authentication.postman_collection.json). Delivery is disabled until explicitly configured; the frontend phase follows backend/Postman/deployment verification.
+
 Independent NestJS REST API with PostgreSQL and Prisma. This repository does not import code or configuration from the frontend or its parent directory.
 
 Browse the [implementation documentation](docs/README.md), including [authentication](docs/authentication.md), for feature-specific decisions and API behavior.
@@ -103,3 +109,5 @@ Follow the [backend hosting guide](docs/deployment.md) for the exact build/start
 Build with `pnpm build`, apply committed migrations with `pnpm db:deploy`, and start with `pnpm start`. Supply environment variables through the hosting platform. Keep the app stateless and store uploads externally when that feature is introduced. Deploy the frontend separately, allow only its actual origin, and configure its hosting rewrites independently.
 
 Authentication includes register, login, refresh, logout, and current-user endpoints, backed by revocable sessions. See the [authentication guide](docs/authentication.md) for setup and examples. Customer, business, invoice, checkout, and webhook endpoints are later phases. No development accounts are seeded automatically.
+
+Password recovery is now implemented on the backend. See [forgot/reset password](docs/password-reset.md) for the API, migration, Postman workflow and verification limits. Authenticated password changes invalidate pending reset links.

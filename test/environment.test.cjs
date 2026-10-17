@@ -71,3 +71,48 @@ test('requires strong, different access and refresh secrets', () => {
     }),
   );
 });
+
+test('email delivery is disabled by default and SMTP requires its credentials', () => {
+  assert.equal(validateEnvironment(valid).EMAIL_PROVIDER, 'disabled');
+  assert.throws(() =>
+    validateEnvironment({ ...valid, EMAIL_PROVIDER: 'smtp' }),
+  );
+  assert.equal(
+    validateEnvironment({
+      ...valid,
+      EMAIL_PROVIDER: 'smtp',
+      SMTP_HOST: 'smtp.example.com',
+      SMTP_USER: 'test-user',
+      SMTP_PASSWORD: 'test-not-real',
+      EMAIL_FROM: 'verify@example.com',
+    }).EMAIL_PROVIDER,
+    'smtp',
+  );
+});
+
+test('SMTP TLS settings parse booleans correctly and reject mismatched standard ports', () => {
+  const smtp = {
+    ...valid,
+    EMAIL_PROVIDER: 'smtp',
+    SMTP_HOST: 'smtp.example.com',
+    SMTP_USER: 'test-user',
+    SMTP_PASSWORD: 'test-not-real',
+    EMAIL_FROM: 'verify@example.com',
+  };
+  assert.equal(validateEnvironment(smtp).SMTP_SECURE, false);
+  assert.equal(
+    validateEnvironment({ ...smtp, SMTP_PORT: '465', SMTP_SECURE: 'true' })
+      .SMTP_SECURE,
+    true,
+  );
+  assert.throws(() =>
+    validateEnvironment({ ...smtp, SMTP_PORT: '465', SMTP_SECURE: 'false' }),
+  );
+  assert.throws(() =>
+    validateEnvironment({ ...smtp, SMTP_PORT: '587', SMTP_SECURE: 'true' }),
+  );
+  assert.throws(() =>
+    validateEnvironment({ ...smtp, SMTP_SECURE: 'not-a-boolean' }),
+  );
+  assert.throws(() => validateEnvironment({ ...smtp, SMTP_PORT: '0' }));
+});

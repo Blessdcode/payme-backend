@@ -19,7 +19,7 @@ export class RegisterDto {
   @IsString()
   @MinLength(8)
   @MaxLength(72)
-  @IsByteLength(0, 72, { message: 'Password must not exceed 72 UTF-8 bytes' })
+  @IsByteLength(0, 72, { message: 'Password must not exceed 72' })
   password!: string;
 
   @Transform(({ value }: { value: unknown }) =>
